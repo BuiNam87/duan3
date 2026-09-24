@@ -1,0 +1,52 @@
+<html><head><meta charset="utf-8"><style>
+body{margin:0;background:#111;color:#eee;font:13px sans-serif}
+#list{height:420px;overflow-y:auto;border-bottom:1px solid #333}
+.batch-container{display:flex;gap:10px;padding:8px}
+.tile-row{display:flex;gap:6px}
+flow-grid-tile-container{display:block;width:150px;height:84px;background:#333}
+img.image{width:150px;height:84px;display:block}
+.cdk-overlay-container{position:fixed;inset:0;pointer-events:none}
+.menu{position:fixed;background:#222;border:1px solid #555;pointer-events:auto;min-width:160px}
+.menu button{display:block;width:100%;text-align:left;padding:6px 10px;background:none;color:#eee;border:0}
+</style></head><body>
+<div id="list"></div>
+<div style="width:800px"><div _ngcontent-ng-c4100416985="" cdkoverlayorigin="" class="base-prompt-box" bis_skin_checked="1"><flow-border-glow _ngcontent-ng-c4100416985="" _nghost-ng-c1927255850="" class="loop"><svg _ngcontent-ng-c1927255850="" aria-hidden="true" class="border-glow-svg"><rect _ngcontent-ng-c1927255850="" width="100%" height="100%" fill="none" class="glow-outline" pathLength="100" stroke-width="1" stroke-dasharray="70 30" opacity="0.5" rx="22" ry="22" style="--base-offset: 0;"></rect><!----></svg></flow-border-glow><div _ngcontent-ng-c4100416985="" class="prompt-top-row" bis_skin_checked="1"><!----><flow-rich-text-editor _ngcontent-ng-c4100416985="" class="prompt-input"><!----><div class="prosemirror-editor" bis_skin_checked="1"><div contenteditable="true" translate="no" class="ProseMirror" bis_skin_checked="1"><p>tạo ảnh chàng trai</p></div></div></flow-rich-text-editor><!----><!----><!----><div _ngcontent-ng-c4100416985="" class="top-right-actions" bis_skin_checked="1"><button _ngcontent-ng-c4100416985="" mat-icon-button="" type="button" class="mdc-icon-button mat-mdc-icon-button mat-mdc-button-base mat-mdc-tooltip-trigger clear-button clear-button-no-touch-target mat-unthemed _mat-animation-noopable" mat-ripple-loader-class-name="mat-mdc-button-ripple" mat-ripple-loader-centered="" aria-label="Xoá câu lệnh"><span class="mat-mdc-button-persistent-ripple mdc-icon-button__ripple"></span><mat-icon _ngcontent-ng-c4100416985="" role="img" class="mat-icon notranslate clear-icon google-symbols mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font">close</mat-icon><!----><span class="mat-focus-indicator"></span><span class="mat-mdc-button-touch-target"></span><span class="mat-ripple mat-mdc-button-ripple"></span></button><!----><!----></div></div><!----><!----><div _ngcontent-ng-c4100416985="" class="bottom-controls" bis_skin_checked="1"><flow-add-menu _ngcontent-ng-c4100416985=""><div cdkoverlayorigin="" class="add-menu-container" bis_skin_checked="1"><button maticonbutton="" type="button" aria-haspopup="true" class="mdc-icon-button mat-mdc-icon-button mat-mdc-button-base mat-mdc-tooltip-trigger add-menu-trigger mat-unthemed _mat-animation-noopable" aria-label="Thêm thành phần vào ô nhập câu lệnh" aria-expanded="false"><span class="mat-mdc-button-persistent-ripple mdc-icon-button__ripple"></span><mat-icon role="img" class="mat-icon notranslate add-menu-icon google-symbols mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font"><!----> add <!----></mat-icon></button></div></flow-add-menu><flow-agent-mode-toggle-chip bottomcontrolextra=""><button class="agent-mode-chip" aria-pressed="false"><span class="agent-mode-chip-label">Tác nhân</span></button></flow-agent-mode-toggle-chip><div _ngcontent-ng-c4100416985="" class="submit-controls" bis_skin_checked="1"><button matbutton="" flow-button="" aria-label="Điều kiện kích hoạt cài đặt" class="mdc-button settings-trigger-button"><span class="mdc-button__label"><span class="settings-summary"> 🍌 Nano Banana Pro <mat-icon role="img" class="mat-icon notranslate flow-icon-m google-symbols" aria-hidden="true" data-mat-icon-type="font">crop_16_9</mat-icon> x4 </span></span></button><flow-generate-icon-button _ngcontent-ng-c4100416985="" class="mat-mdc-tooltip-trigger mat-mdc-tooltip-disabled" _nghost-ng-c65785088=""><button _ngcontent-ng-c65785088="" flow-icon-button="" maticonbutton="" type="submit" aria-label="Bắt đầu tạo" cdkoverlayorigin="" class="mdc-icon-button mat-mdc-icon-button mat-mdc-button-base generate-icon-button mat-unthemed _mat-animation-noopable flow-icon-button-secondary flow-button-small flow-icon-button-no-touch-target"><span class="mat-mdc-button-persistent-ripple mdc-icon-button__ripple"></span><!----><mat-icon _ngcontent-ng-c65785088="" role="img" class="mat-icon notranslate flow-icon-m mat-icon-rtl-mirror google-symbols mat-icon-no-color" aria-hidden="true" data-mat-icon-type="font">arrow_forward</mat-icon><!----><!----><span class="mat-focus-indicator"></span><span class="mat-mdc-button-touch-target"></span><span class="mat-ripple mat-mdc-button-ripple"></span></button></flow-generate-icon-button></div></div></div>
+</div>
+<div class="cdk-overlay-container"></div>
+<script>
+window.sent=[]; window.untrusted=0; window.downloadsFired=[]; let seq=0;
+const ed=document.querySelector('.ProseMirror'), list=document.getElementById('list'), ov=document.querySelector('.cdk-overlay-container');
+const PNG='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+document.querySelector('.generate-icon-button').onclick=(e)=>{
+  if(!e.isTrusted){untrusted++;return;}
+  const prompt=ed.innerText.trim(); sent.push(prompt);
+  const b=document.createElement('div'); b.className='batch-container virtual-item-container';
+  b.innerHTML='<div class="batch-tiles-section"><div class="tile-row"></div></div><flow-batch-info><div class="below-toolbar"><flow-expandable-prompt><div class="prompt-text"><span class="text-part"></span></div></flow-expandable-prompt></div></flow-batch-info>';
+  b.querySelector('.text-part').textContent=prompt;
+  const row=b.querySelector('.tile-row');
+  for(let k=0;k<4;k++){ const t=document.createElement('flow-grid-tile-container'); t.className='mat-context-menu-trigger'; t.textContent='Đang tạo…'; row.appendChild(t);
+    setTimeout(()=>{ t.textContent=''; const img=document.createElement('img'); img.className='image'; img.dataset.mediaId='m'+(++seq)+'-'+Math.random().toString(36).slice(2,6); img.src='data:image/png;base64,'+PNG; t.appendChild(img);}, 2500+k*700); }
+  list.prepend(b);
+};
+function closeMenus(){ ov.innerHTML=''; }
+function item(label, onClick, sub, subt){ const bt=document.createElement('button'); bt.setAttribute('role','menuitem'); bt.setAttribute('mat-menu-item','');
+  bt.innerHTML='<span class="left-content"><span class="item-text"><span class="label"></span></span></span>'; bt.querySelector('.label').textContent=label; if(subt){const d=document.createElement('span'); d.className='description'; d.textContent=subt; bt.querySelector('.item-text').appendChild(d);}
+  bt.addEventListener('click',e=>{ if(!e.isTrusted){untrusted++;return;} onClick&&onClick(e);});
+  if(sub) bt.addEventListener('mouseenter',sub);
+  return bt; }
+function menu(x,y,items){ const m=document.createElement('div'); m.className='menu'; m.setAttribute('role','menu'); m.style.left=x+'px'; m.style.top=y+'px'; items.forEach(i=>m.appendChild(i)); ov.appendChild(m); return m; }
+list.addEventListener('contextmenu',e=>{
+  const tile=e.target.closest('flow-grid-tile-container'); if(!tile) return; e.preventDefault();
+  if(!e.isTrusted){untrusted++;return;}
+  const img=tile.querySelector('img'); if(!img) return;
+  closeMenus();
+  let subOpen=false;
+  const openSub=()=>{ if(subOpen) return; subOpen=true; const r=m.getBoundingClientRect();
+    menu(r.right, r.top+30, [['1K','Kích thước gốc'],['2K','Đã tăng độ phân giải'],['4K','Đã tăng độ phân giải']].map(([l,subt])=>item(l,()=>{
+      closeMenus();
+      setTimeout(()=>{ const a=document.createElement('a'); a.href='data:image/png;base64,'+PNG; a.download='flow_'+img.dataset.mediaId+'_'+l.replace(/\W+/g,'')+'.png'; document.body.appendChild(a); a.click(); a.remove(); downloadsFired.push(img.dataset.mediaId+':'+l); }, 1500);
+    },null,subt))); };
+  const m=menu(e.clientX,e.clientY,[item('Yêu thích'),item('Sử dụng lại câu lệnh'),item('Tải xuống',openSub,openSub),item('Sao chép')]);
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeMenus(); });
+</script></body></html>
