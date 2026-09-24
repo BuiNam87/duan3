@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Batch Prompt Runner</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header>
+    <h1>Batch Prompt Runner</h1>
+    <div id="siteInfo" class="muted">Đang kiểm tra tab…</div>
+  </header>
+
+  <section>
+    <label for="prompts">Danh sách prompt</label>
+    <textarea id="prompts" rows="12" placeholder="Mỗi dòng là 1 prompt&#10;(hoặc chọn chế độ ngăn cách bằng ---)"></textarea>
+    <div class="row">
+      <select id="splitMode">
+        <option value="line">Mỗi dòng = 1 prompt</option>
+        <option value="dash">Ngăn cách bằng dòng ---</option>
+      </select>
+      <span id="count" class="muted">0 prompt</span>
+    </div>
+  </section>
+
+  <section class="row">
+    <button id="startBtn" class="primary">▶ Chạy</button>
+    <button id="stopBtn" disabled>■ Dừng</button>
+  </section>
+
+  <details>
+    <summary>Cài đặt</summary>
+    <label for="preset">Trang web</label>
+    <select id="preset"></select>
+
+    <label for="selInput">Selector ô nhập</label>
+    <input id="selInput" type="text" />
+    <label for="selSend">Selector nút gửi</label>
+    <input id="selSend" type="text" />
+    <label for="selStop">Selector nút dừng (lúc AI đang trả lời)</label>
+    <input id="selStop" type="text" />
+
+    <div class="grid">
+      <label>Chờ im lặng (giây)
+        <input id="idleSec" type="number" min="1" value="5" />
+      </label>
+      <label>Nghỉ giữa prompt (giây)
+        <input id="gapSec" type="number" min="0" value="3" />
+      </label>
+      <label>Tối đa mỗi prompt (giây)
+        <input id="maxSec" type="number" min="10" value="300" />
+      </label>
+    </div>
+    <p class="muted small">
+      Xong 1 prompt khi: nút dừng biến mất <b>và</b> trang không thay đổi trong
+      "chờ im lặng" giây. Nếu để trống selector, extension tự dò ô nhập và bấm Enter.
+    </p>
+    <button id="resetBtn">Khôi phục mặc định cho trang này</button>
+  </details>
+
+  <section>
+    <div class="row">
+      <label>Tiến độ</label>
+      <span id="progress" class="muted"></span>
+    </div>
+    <ol id="log"></ol>
+  </section>
+
+  <script src="presets.js"></script>
+  <script src="page-runner.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

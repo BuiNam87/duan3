@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Batch Prompt Runner",
+  "version": "1.0.0",
+  "description": "Panel bên phải để chạy hàng loạt prompt trên ChatGPT, Gemini, Claude và các trang chat AI khác.",
+  "permissions": ["sidePanel", "storage", "scripting", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "action": { "default_title": "Mở Batch Prompt Runner" }
+}
