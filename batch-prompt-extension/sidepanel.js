@@ -117,14 +117,80 @@ function setState(li, state, error) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Tiêm page-runner.js vào trang nếu trang chưa có (vd. vừa tải lại), rồi gọi window.BP[method](...args).
+// Không tiêm lại khi đã có, để giữ trạng thái giữa các bước (bộ theo dõi đã gửi).
+async function callPage(tabId, method, ...args) {
+  const [has] = await chrome.scripting.executeScript({ target: { tabId }, func: () => !!window.BP });
+  if (!has?.result) await chrome.scripting.executeScript({ target: { tabId }, files: ["page-runner.js"] });
+  const [res] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: (m, a) => window.BP[m](...a),
+    args: [method, args]
+  });
+  return res?.result;
+}
+
+// ---- Thao tác thật qua chrome.debugger (trang không phân biệt được với người dùng) ----
+let debuggerTab = null;
+chrome.debugger.onDetach.addListener((src) => {
+  if (src.tabId === debuggerTab) debuggerTab = null;
+});
+
+async function attachDebugger(tabId) {
+  if (debuggerTab === tabId) return;
+  await chrome.debugger.attach({ tabId }, "1.3");
+  debuggerTab = tabId;
+}
+
+async function detachDebugger() {
+  if (debuggerTab == null) return;
+  const tabId = debuggerTab;
+  debuggerTab = null;
+  try { await chrome.debugger.detach({ tabId }); } catch (_) {}
+}
+
+const cdp = (tabId, method, params) => chrome.debugger.sendCommand({ tabId }, method, params);
+
+async function realClick(tabId, x, y) {
+  await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+  await cdp(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
+  await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
+}
+
+async function realSend(tabId, prompt, cfg) {
+  try {
+    await attachDebugger(tabId);
+  } catch (err) {
+    return { ok: false, error: "Không bật được chế độ thao tác thật: " + err.message };
+  }
+  const loc = await callPage(tabId, "locateInput", cfg);
+  if (!loc?.ok) return loc || { ok: false, error: "Không đọc được trang." };
+  await realClick(tabId, loc.x, loc.y);
+  await sleep(200);
+  // Chọn hết chữ cũ trong ô rồi gõ đè
+  const selAll = { key: "a", code: "KeyA", windowsVirtualKeyCode: 65, commands: ["selectAll"] };
+  await cdp(tabId, "Input.dispatchKeyEvent", { type: "rawKeyDown", ...selAll });
+  await cdp(tabId, "Input.dispatchKeyEvent", { type: "keyUp", ...selAll });
+  await cdp(tabId, "Input.insertText", { text: prompt });
+  await sleep(600);
+  const arm = await callPage(tabId, "armSend", cfg, prompt);
+  if (!arm?.ok) return arm || { ok: false, error: "Không đọc được trang." };
+  await realClick(tabId, arm.x, arm.y);
+  const sent = await callPage(tabId, "awaitSent", 6000);
+  if (sent) return { ok: true };
+  return { ok: false, error: "Đã bấm nút gửi (thao tác thật) nhưng trang vẫn không phản hồi." + (arm.diag || "") };
+}
+
 async function start() {
   const prompts = parsePrompts();
   if (!prompts.length) {
     els.siteInfo.textContent = "Chưa có prompt nào.";
     return;
   }
-  await refreshTab();
-  const tabId = currentTabId;
+  // Chỉ lấy tab đang mở, giữ nguyên cài đặt đang hiển thị (người dùng có thể đã chọn tay).
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab) return;
+  const tabId = (currentTabId = tab.id);
   const cfg = {
     input: els.selInput.value.trim(),
     send: els.selSend.value.trim(),
@@ -143,38 +209,48 @@ async function start() {
   els.log.innerHTML = "";
   const items = prompts.map(addLogItem);
   let okCount = 0;
+  // Khi cú bấm bằng script không có tác dụng, các prompt sau dùng luôn thao tác thật.
+  let useReal = false;
 
-  for (let i = 0; i < prompts.length && !stopRequested; i++) {
-    els.progress.textContent = `${i + 1}/${prompts.length}`;
-    setState(items[i], "running");
-    items[i].scrollIntoView({ block: "nearest" });
-    let result;
-    try {
-      const [res] = await chrome.scripting.executeScript({
-        target: { tabId },
-        func: runPromptInPage,
-        args: [prompts[i], cfg]
-      });
-      result = res?.result || { ok: false, error: "Không nhận được kết quả từ trang." };
-    } catch (err) {
-      result = { ok: false, error: err.message };
-    }
-    setState(items[i], result.ok ? "done" : "error", result.ok ? "" : result.error);
-    if (result.ok) okCount++;
-    if (!result.ok && !stopRequested && /Không tìm thấy|Cannot access|No tab/i.test(result.error)) break;
-    if (i < prompts.length - 1 && !stopRequested) {
-      const end = Date.now() + gapMs;
-      while (Date.now() < end && !stopRequested) {
-        els.progress.textContent = `${i + 1}/${prompts.length} · chờ ${Math.ceil((end - Date.now()) / 1000)}s`;
-        await sleep(250);
+  try {
+    for (let i = 0; i < prompts.length && !stopRequested; i++) {
+      els.progress.textContent = `${i + 1}/${prompts.length}`;
+      setState(items[i], "running");
+      items[i].scrollIntoView({ block: "nearest" });
+      let result;
+      try {
+        if (!useReal) {
+          result = (await callPage(tabId, "send", prompts[i], cfg)) || { ok: false, error: "Không nhận được kết quả từ trang." };
+          if (!result.ok && result.needTrusted && !stopRequested) useReal = true;
+        }
+        if (useReal && !stopRequested) {
+          els.progress.textContent = `${i + 1}/${prompts.length} · thao tác thật`;
+          result = await realSend(tabId, prompts[i], cfg);
+        }
+        if (result.ok && cfg.waitMode === "done" && !stopRequested) {
+          result = (await callPage(tabId, "waitDone", cfg)) || { ok: false, error: "Không nhận được kết quả từ trang." };
+        }
+      } catch (err) {
+        result = { ok: false, error: err.message };
+      }
+      setState(items[i], result.ok ? "done" : "error", result.ok ? "" : result.error);
+      if (result.ok) okCount++;
+      if (!result.ok && !stopRequested) break; // lỗi thì dừng để khỏi tốn tín dụng vô ích
+      if (i < prompts.length - 1 && !stopRequested) {
+        const end = Date.now() + gapMs;
+        while (Date.now() < end && !stopRequested) {
+          els.progress.textContent = `${i + 1}/${prompts.length} · chờ ${Math.ceil((end - Date.now()) / 1000)}s`;
+          await sleep(250);
+        }
       }
     }
+  } finally {
+    await detachDebugger();
+    els.progress.textContent = `Xong ${okCount}/${prompts.length}${stopRequested ? " (đã dừng)" : ""}`;
+    running = false;
+    els.startBtn.disabled = false;
+    els.stopBtn.disabled = true;
   }
-
-  els.progress.textContent = `Xong ${okCount}/${prompts.length}${stopRequested ? " (đã dừng)" : ""}`;
-  running = false;
-  els.startBtn.disabled = false;
-  els.stopBtn.disabled = true;
 }
 
 async function stop() {
@@ -182,7 +258,7 @@ async function stop() {
   els.stopBtn.disabled = true;
   if (currentTabId != null) {
     try {
-      await chrome.scripting.executeScript({ target: { tabId: currentTabId }, func: stopInPage });
+      await callPage(currentTabId, "stop");
     } catch (_) {}
   }
 }
@@ -205,11 +281,11 @@ async function pick(field) {
   const old = els.siteInfo.textContent;
   els.siteInfo.textContent = "Bấm vào phần tử trên trang web (Esc để huỷ)…";
   try {
-    const [res] = await chrome.scripting.executeScript({ target: { tabId: currentTabId }, func: pickElementInPage });
-    if (res?.result?.selector) {
-      field.value = res.result.selector;
+    const res = await callPage(currentTabId, "pick");
+    if (res?.selector) {
+      field.value = res.selector;
       saveSelectors();
-      els.siteInfo.textContent = `Đã chọn: ${res.result.selector}`;
+      els.siteInfo.textContent = `Đã chọn: ${res.selector}`;
       return;
     }
     els.siteInfo.textContent = old;

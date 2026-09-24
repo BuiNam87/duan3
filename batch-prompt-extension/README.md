@@ -27,6 +27,16 @@ Prompt, cài đặt và selector đã sửa được lưu lại tự động.
 2. Mở panel → tự nhận là **Google Flow**, chế độ **gửi xong chờ cố định 20 giây** rồi gửi prompt tiếp theo.
 3. Nếu Flow báo đang tạo quá nhiều cùng lúc, tăng số giây chờ trong **Cài đặt**.
 
+### Thanh vàng "đang gỡ lỗi trình duyệt này"
+
+Một số trang (như Flow) bỏ qua cú bấm do script tạo ra. Khi đó extension tự chuyển sang
+**thao tác thật** qua `chrome.debugger`: bấm chuột và gõ phím giống hệt người dùng.
+Lúc này Chrome hiện thanh vàng "Batch Prompt Runner đã bắt đầu gỡ lỗi trình duyệt này".
+Đó là bình thường, **đừng bấm Huỷ** khi đang chạy. Chạy xong thanh sẽ tự tắt.
+Khi đang chạy, không di chuột/gõ phím vào tab đó để khỏi lẫn thao tác.
+
+Gặp lỗi ở prompt nào thì extension dừng lại ngay, để khỏi tốn tín dụng vô ích.
+
 Nếu dòng tiến độ báo lỗi: mở **Cài đặt**, bấm **🎯 Chọn** cạnh "Nút gửi" rồi bấm vào nút mũi tên gửi trên trang
 (làm tương tự với "Ô nhập prompt" nếu cần). Extension sẽ tự lấy selector và ghi nhớ.
 
