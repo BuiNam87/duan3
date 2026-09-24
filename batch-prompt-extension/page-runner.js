@@ -53,20 +53,21 @@ async function runPromptInPage(prompt, cfg) {
     return `<${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}>${label ? " " + label : ""}`;
   };
 
-  // Tự đoán nút gửi: đi ngược lên từ ô nhập, ở khối gần nhất có nút bấm thì
-  // ưu tiên nút có chữ/nhãn giống "gửi", không có thì lấy nút ở góc phải dưới cùng.
+  // Tự đoán nút gửi: đi ngược lên từ ô nhập, ở khối gần nhất có nút bấm thì ưu tiên nút
+  // có chữ/nhãn giống "gửi"/type=submit, không có thì lấy nút ở góc phải dưới cùng.
+  // Luôn bỏ qua nút xoá/đóng/huỷ (bấm nhầm sẽ xoá mất prompt).
   const guessSendButton = (inputEl) => {
-    const kw = /arrow_forward|arrow_upward|send|gửi|submit|generate/i;
+    const label = (b) => `${b.textContent} ${b.getAttribute("aria-label") || ""} ${b.title || ""}`;
+    const kw = /arrow_forward|arrow_upward|send|gửi|submit|generate|bắt đầu tạo/i;
+    const bad = /close|clear|xoá|xóa|delete|remove|cancel|huỷ|hủy|\bmic\b|voice|giọng nói/i;
     let node = inputEl.parentElement;
     for (let depth = 0; node && depth < 8; depth++, node = node.parentElement) {
       const btns = [...node.querySelectorAll('button, [role="button"]')].filter(
-        (b) => isVisible(b) && !b.contains(inputEl)
+        (b) => isVisible(b) && !b.contains(inputEl) && !bad.test(label(b))
       );
       if (!btns.length) continue;
-      const byKw = btns.filter((b) =>
-        kw.test(`${b.textContent} ${b.getAttribute("aria-label") || ""} ${b.title || ""}`)
-      );
-      if (byKw.length) return byKw[byKw.length - 1];
+      const pref = btns.filter((b) => b.type === "submit" || kw.test(label(b)));
+      if (pref.length) return pref[pref.length - 1];
       let best = null;
       let bestScore = -Infinity;
       for (const b of btns) {
@@ -106,15 +107,33 @@ async function runPromptInPage(prompt, cfg) {
     el.dispatchEvent(new KeyboardEvent("keyup", opts));
   };
 
-  // Chờ ô nhập được xoá trống = dấu hiệu trang đã nhận prompt.
-  const waitCleared = async (el, ms) => {
-    const end = Date.now() + ms;
-    while (Date.now() < end) {
-      const cur = el.isConnected ? el : findLast(cfg.input) || guessInput();
-      if (!cur || readInput(cur) === "") return true;
-      await sleep(250);
-    }
-    return false;
+  // Theo dõi dấu hiệu trang đã nhận prompt: ô nhập bị xoá trống, nút gửi bị khoá/biến mất,
+  // hoặc có phần tử mới xuất hiện bên ngoài khung nhập (vd. ô ảnh đang tạo).
+  const watchSent = (inputEl, btn) => {
+    let composer = inputEl.parentElement;
+    while (btn && composer && !composer.contains(btn)) composer = composer.parentElement;
+    composer = composer || inputEl.parentElement;
+    let outside = false;
+    const obs = new MutationObserver((muts) => {
+      for (const m of muts)
+        for (const n of m.addedNodes)
+          if (n.nodeType === 1 && !composer.contains(n) && !n.contains(composer)) outside = true;
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    return {
+      async wait(ms) {
+        const end = Date.now() + ms;
+        while (Date.now() < end) {
+          const cur = inputEl.isConnected ? inputEl : findLast(cfg.input) || guessInput();
+          if (!cur || readInput(cur) === "") return true;
+          if (btn && (!btn.isConnected || !isEnabled(btn))) return true;
+          if (outside) return true;
+          await sleep(250);
+        }
+        return false;
+      },
+      stop: () => obs.disconnect()
+    };
   };
 
   // 1. Tìm ô nhập
@@ -155,18 +174,24 @@ async function runPromptInPage(prompt, cfg) {
     ` [ô nhập: ${describe(input)}${filled ? ", đã điền chữ" : ", KHÔNG điền được chữ"}; ` +
     `nút gửi: ${sendBtn ? describe(sendBtn) + (isEnabled(sendBtn) ? "" : " (đang bị khoá)") : "không thấy"}]`;
 
+  const watcher = watchSent(input, isEnabled(sendBtn) ? sendBtn : null);
   if (isEnabled(sendBtn)) sendBtn.click();
   else pressEnter(input);
 
-  if (!(await waitCleared(input, 5000))) {
-    // Thử lại bằng Enter nếu lần đầu dùng nút gửi
-    if (isEnabled(sendBtn)) {
-      pressEnter(input);
-      if (!(await waitCleared(input, 3000)))
-        return { ok: false, error: "Đã bấm gửi nhưng trang chưa nhận prompt. Dùng nút 🎯 trong Cài đặt để chọn lại nút gửi." + diag() };
-    } else {
-      return { ok: false, error: "Không bấm được nút gửi. Dùng nút 🎯 trong Cài đặt để chọn nút gửi." + diag() };
-    }
+  let sent = await watcher.wait(5000);
+  if (!sent && isEnabled(sendBtn)) {
+    // Thử lại bằng Enter nếu bấm nút không có tác dụng
+    pressEnter(input);
+    sent = await watcher.wait(3000);
+  }
+  watcher.stop();
+  if (!sent) {
+    return {
+      ok: false,
+      error: (sendBtn
+        ? "Đã bấm gửi nhưng trang không phản hồi. Dùng nút 🎯 trong Cài đặt để chọn lại nút gửi."
+        : "Không bấm được nút gửi. Dùng nút 🎯 trong Cài đặt để chọn nút gửi.") + diag()
+    };
   }
 
   // Chế độ "chỉ gửi": không chờ kết quả, panel sẽ tự chờ số giây cố định.

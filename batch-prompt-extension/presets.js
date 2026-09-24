@@ -6,8 +6,8 @@ const PRESETS = {
   flow: {
     name: "Google Flow",
     hosts: ["flow.google.com", "labs.google"],
-    input: 'textarea#PINHOLE_TEXT_AREA_ELEMENT_ID || textarea || [contenteditable="true"]',
-    send: "button::text(arrow_forward)",
+    input: '.base-prompt-box .ProseMirror[contenteditable="true"] || flow-rich-text-editor [contenteditable="true"] || textarea',
+    send: "button.generate-icon-button || button[type=submit]::text(arrow_forward) || button::text(arrow_forward)",
     stop: "",
     waitMode: "fixed",
     fixedSec: 20
