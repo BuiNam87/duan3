@@ -199,6 +199,26 @@ els.resetBtn.addEventListener("click", () => {
   loadSelectors(els.preset.value);
   save();
 });
+async function pick(field) {
+  await refreshTab();
+  if (currentTabId == null) return;
+  const old = els.siteInfo.textContent;
+  els.siteInfo.textContent = "Bấm vào phần tử trên trang web (Esc để huỷ)…";
+  try {
+    const [res] = await chrome.scripting.executeScript({ target: { tabId: currentTabId }, func: pickElementInPage });
+    if (res?.result?.selector) {
+      field.value = res.result.selector;
+      saveSelectors();
+      els.siteInfo.textContent = `Đã chọn: ${res.result.selector}`;
+      return;
+    }
+    els.siteInfo.textContent = old;
+  } catch (err) {
+    els.siteInfo.textContent = "Không chọn được: " + err.message;
+  }
+}
+$("pickInput").addEventListener("click", () => pick(els.selInput));
+$("pickSend").addEventListener("click", () => pick(els.selSend));
 els.startBtn.addEventListener("click", start);
 els.stopBtn.addEventListener("click", stop);
 chrome.tabs.onActivated.addListener(refreshTab);

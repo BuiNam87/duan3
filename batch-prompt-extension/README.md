@@ -27,8 +27,8 @@ Prompt, cài đặt và selector đã sửa được lưu lại tự động.
 2. Mở panel → tự nhận là **Google Flow**, chế độ **gửi xong chờ cố định 20 giây** rồi gửi prompt tiếp theo.
 3. Nếu Flow báo đang tạo quá nhiều cùng lúc, tăng số giây chờ trong **Cài đặt**.
 
-Nếu dòng tiến độ báo lỗi "chưa gửi được": chuột phải vào ô nhập / nút mũi tên gửi → **Inspect**,
-sửa selector trong Cài đặt (hoặc gửi đoạn HTML đó để chỉnh giúp).
+Nếu dòng tiến độ báo lỗi: mở **Cài đặt**, bấm **🎯 Chọn** cạnh "Nút gửi" rồi bấm vào nút mũi tên gửi trên trang
+(làm tương tự với "Ô nhập prompt" nếu cần). Extension sẽ tự lấy selector và ghi nhớ.
 
 Cú pháp selector mở rộng:
 - `a || b`: thử `a` trước, không có mới thử `b`

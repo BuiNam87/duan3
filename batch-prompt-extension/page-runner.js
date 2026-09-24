@@ -48,6 +48,39 @@ async function runPromptInPage(prompt, cfg) {
     return best;
   };
 
+  const describe = (el) => {
+    const label = (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30);
+    return `<${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}>${label ? " " + label : ""}`;
+  };
+
+  // Tự đoán nút gửi: đi ngược lên từ ô nhập, ở khối gần nhất có nút bấm thì
+  // ưu tiên nút có chữ/nhãn giống "gửi", không có thì lấy nút ở góc phải dưới cùng.
+  const guessSendButton = (inputEl) => {
+    const kw = /arrow_forward|arrow_upward|send|gửi|submit|generate/i;
+    let node = inputEl.parentElement;
+    for (let depth = 0; node && depth < 8; depth++, node = node.parentElement) {
+      const btns = [...node.querySelectorAll('button, [role="button"]')].filter(
+        (b) => isVisible(b) && !b.contains(inputEl)
+      );
+      if (!btns.length) continue;
+      const byKw = btns.filter((b) =>
+        kw.test(`${b.textContent} ${b.getAttribute("aria-label") || ""} ${b.title || ""}`)
+      );
+      if (byKw.length) return byKw[byKw.length - 1];
+      let best = null;
+      let bestScore = -Infinity;
+      for (const b of btns) {
+        const r = b.getBoundingClientRect();
+        if (r.right + r.bottom > bestScore) {
+          best = b;
+          bestScore = r.right + r.bottom;
+        }
+      }
+      return best;
+    }
+    return null;
+  };
+
   const isTextField = (el) => el.tagName === "TEXTAREA" || el.tagName === "INPUT";
   const readInput = (el) => (isTextField(el) ? el.value : el.innerText).trim();
 
@@ -91,7 +124,7 @@ async function runPromptInPage(prompt, cfg) {
     if (!input) await sleep(250);
   }
   if (!input) input = guessInput();
-  if (!input) return { ok: false, error: "Không tìm thấy ô nhập prompt." };
+  if (!input) return { ok: false, error: "Không tìm thấy ô nhập prompt. Dùng nút 🎯 trong Cài đặt để chọn ô nhập." };
 
   // 2. Điền prompt
   input.focus();
@@ -110,15 +143,18 @@ async function runPromptInPage(prompt, cfg) {
   }
   await sleep(600);
 
-  // 3. Gửi: bấm nút gửi nếu có, không thì nhấn Enter
+  // 3. Gửi: bấm nút gửi (theo selector, không có thì tự đoán), cuối cùng mới nhấn Enter
+  const filled = readInput(input) !== "";
   let sendBtn = null;
-  if (cfg.send) {
-    for (let i = 0; i < 20; i++) {
-      sendBtn = findLast(cfg.send);
-      if (isEnabled(sendBtn)) break;
-      await sleep(250);
-    }
+  for (let i = 0; i < 20; i++) {
+    sendBtn = findLast(cfg.send) || guessSendButton(input);
+    if (isEnabled(sendBtn)) break;
+    await sleep(250);
   }
+  const diag = () =>
+    ` [ô nhập: ${describe(input)}${filled ? ", đã điền chữ" : ", KHÔNG điền được chữ"}; ` +
+    `nút gửi: ${sendBtn ? describe(sendBtn) + (isEnabled(sendBtn) ? "" : " (đang bị khoá)") : "không thấy"}]`;
+
   if (isEnabled(sendBtn)) sendBtn.click();
   else pressEnter(input);
 
@@ -127,9 +163,9 @@ async function runPromptInPage(prompt, cfg) {
     if (isEnabled(sendBtn)) {
       pressEnter(input);
       if (!(await waitCleared(input, 3000)))
-        return { ok: false, error: "Đã điền prompt nhưng chưa gửi được (ô nhập không được xoá). Kiểm tra selector nút gửi." };
+        return { ok: false, error: "Đã bấm gửi nhưng trang chưa nhận prompt. Dùng nút 🎯 trong Cài đặt để chọn lại nút gửi." + diag() };
     } else {
-      return { ok: false, error: "Không tìm thấy nút gửi và nhấn Enter không có tác dụng. Kiểm tra selector nút gửi." };
+      return { ok: false, error: "Không bấm được nút gửi. Dùng nút 🎯 trong Cài đặt để chọn nút gửi." + diag() };
     }
   }
 
@@ -155,4 +191,84 @@ async function runPromptInPage(prompt, cfg) {
 
 function stopInPage() {
   window.__bpStop = true;
+}
+
+// Cho người dùng bấm chọn 1 phần tử trên trang, trả về selector của phần tử đó.
+function pickElementInPage() {
+  return new Promise((resolve) => {
+    const box = document.createElement("div");
+    Object.assign(box.style, {
+      position: "fixed", zIndex: 2147483647, pointerEvents: "none",
+      border: "2px solid #f59e0b", background: "rgba(245,158,11,.15)", borderRadius: "4px"
+    });
+    const tip = document.createElement("div");
+    tip.textContent = "Bấm vào phần tử cần chọn · Esc để huỷ";
+    Object.assign(tip.style, {
+      position: "fixed", zIndex: 2147483647, top: "8px", left: "50%", transform: "translateX(-50%)",
+      background: "#f59e0b", color: "#000", padding: "6px 12px", borderRadius: "6px",
+      font: "600 13px system-ui", pointerEvents: "none"
+    });
+    document.documentElement.append(box, tip);
+
+    const pickTarget = (el) =>
+      el.closest('button, [role="button"], textarea, input, [contenteditable="true"], [contenteditable=""]') || el;
+
+    const buildSelector = (el) => {
+      const tag = el.tagName.toLowerCase();
+      const q = (v) => v.replace(/"/g, '\\"');
+      if (el.id && !/\d{4,}|:/.test(el.id)) return "#" + CSS.escape(el.id);
+      const testid = el.getAttribute("data-testid");
+      if (testid) return `${tag}[data-testid="${q(testid)}"]`;
+      const aria = el.getAttribute("aria-label");
+      if (aria) return `${tag}[aria-label="${q(aria)}"]`;
+      if (el.isContentEditable && el.getAttribute("contenteditable") !== null) return `${tag}[contenteditable="true"]`;
+      if (tag === "textarea") return "textarea";
+      const text = el.textContent.trim();
+      if ((tag === "button" || el.getAttribute("role") === "button") && text && text.length <= 40)
+        return `${tag}::text(${text})`;
+      const parts = [];
+      for (let n = el; n && n !== document.body; n = n.parentElement) {
+        let part = n.tagName.toLowerCase();
+        if (n.id && !/\d{4,}|:/.test(n.id)) { parts.unshift("#" + CSS.escape(n.id)); break; }
+        const same = n.parentElement ? [...n.parentElement.children].filter((c) => c.tagName === n.tagName) : [];
+        if (same.length > 1) part += `:nth-of-type(${same.indexOf(n) + 1})`;
+        parts.unshift(part);
+      }
+      return parts.join(" > ");
+    };
+
+    // Phủ 1 lớp trong suốt lên trang để bắt cú bấm (kể cả vào nút đang bị khoá, vốn không nhận click).
+    const cover = document.createElement("div");
+    Object.assign(cover.style, { position: "fixed", inset: "0", zIndex: 2147483646, cursor: "crosshair", background: "transparent" });
+    document.documentElement.append(cover);
+    const under = (e) => {
+      const el = document.elementsFromPoint(e.clientX, e.clientY).find((x) => x !== cover && x !== box && x !== tip);
+      return el ? pickTarget(el) : null;
+    };
+    const block = (e) => { e.preventDefault(); e.stopPropagation(); };
+    const onMove = (e) => {
+      const el = under(e);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      Object.assign(box.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
+    };
+    const finish = (value) => {
+      removeEventListener("keydown", onKey, true);
+      cover.remove();
+      box.remove();
+      tip.remove();
+      resolve(value);
+    };
+    const onClick = (e) => {
+      block(e);
+      const el = under(e);
+      finish(el ? { selector: buildSelector(el), tag: el.tagName.toLowerCase() } : null);
+    };
+    const onKey = (e) => { if (e.key === "Escape") { block(e); finish(null); } };
+
+    cover.addEventListener("mousemove", onMove);
+    ["pointerdown", "mousedown", "mouseup", "pointerup"].forEach((t) => cover.addEventListener(t, block));
+    cover.addEventListener("click", onClick);
+    addEventListener("keydown", onKey, true);
+  });
 }

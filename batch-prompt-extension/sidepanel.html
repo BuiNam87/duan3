@@ -33,10 +33,17 @@
     <label for="preset">Trang web</label>
     <select id="preset"></select>
 
-    <label for="selInput">Selector ô nhập</label>
-    <input id="selInput" type="text" />
-    <label for="selSend">Selector nút gửi</label>
-    <input id="selSend" type="text" />
+    <label for="selInput">Ô nhập prompt</label>
+    <div class="pick">
+      <input id="selInput" type="text" />
+      <button id="pickInput" title="Bấm rồi chọn ô nhập trên trang">🎯 Chọn</button>
+    </div>
+    <label for="selSend">Nút gửi</label>
+    <div class="pick">
+      <input id="selSend" type="text" />
+      <button id="pickSend" title="Bấm rồi chọn nút gửi trên trang">🎯 Chọn</button>
+    </div>
+    <p class="muted small">Bấm 🎯 rồi bấm vào ô nhập / nút gửi trên trang để extension tự lấy selector.</p>
     <label for="selStop">Selector nút dừng (lúc AI đang trả lời)</label>
     <input id="selStop" type="text" />
 

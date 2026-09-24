@@ -64,3 +64,6 @@ summary { cursor: pointer; font-weight: 600; }
 #log li.error { color: var(--err); }
 #log li .err { display: block; font-size: 12px; }
 #fixedWrap, .grid label { font-weight: 500; }
+.pick { display: flex; gap: 6px; }
+.pick input { flex: 1; min-width: 0; }
+.pick button { white-space: nowrap; padding: 6px 8px; }

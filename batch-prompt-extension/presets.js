@@ -5,8 +5,8 @@
 const PRESETS = {
   flow: {
     name: "Google Flow",
-    hosts: ["labs.google"],
-    input: "textarea#PINHOLE_TEXT_AREA_ELEMENT_ID || textarea",
+    hosts: ["flow.google.com", "labs.google"],
+    input: 'textarea#PINHOLE_TEXT_AREA_ELEMENT_ID || textarea || [contenteditable="true"]',
     send: "button::text(arrow_forward)",
     stop: "",
     waitMode: "fixed",
