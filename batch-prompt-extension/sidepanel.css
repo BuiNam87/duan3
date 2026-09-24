@@ -67,3 +67,12 @@ summary { cursor: pointer; font-weight: 600; }
 .pick { display: flex; gap: 6px; }
 .pick input { flex: 1; min-width: 0; }
 .pick button { white-space: nowrap; padding: 6px 8px; }
+.dl-box { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+label.check { display: flex; gap: 6px; align-items: center; margin: 0; }
+label.check input { width: auto; }
+#dlOpts { margin-top: 6px; line-height: 1.9; }
+input.inline { width: 56px; padding: 2px 6px; display: inline-block; }
+input.inline.num { width: 64px; }
+#log li .dl { display: block; font-size: 12px; color: var(--muted); }
+#log li .dl.ok { color: var(--ok); }
+#log li .dl.err { color: var(--err); }

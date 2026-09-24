@@ -35,9 +35,16 @@ window.BP = (() => {
     const label = (el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 30);
     return `<${el.tagName.toLowerCase()}${el.id ? "#" + el.id : ""}>${label ? " " + label : ""}`;
   };
+  // Điểm giữa phần phần tử còn nằm trong màn hình (menu sát mép có thể bị lấn ra ngoài).
   const center = (el) => {
     const r = el.getBoundingClientRect();
-    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+    const left = Math.max(r.left, 0);
+    const right = Math.min(r.right, window.innerWidth);
+    const top = Math.max(r.top, 0);
+    const bottom = Math.min(r.bottom, window.innerHeight);
+    const x = right > left ? (left + right) / 2 : r.left + r.width / 2;
+    const y = bottom > top ? (top + bottom) / 2 : r.top + r.height / 2;
+    return { x: Math.round(x), y: Math.round(y) };
   };
 
   // Tự dò ô nhập: ô textarea/contenteditable lớn nhất đang hiển thị.
@@ -266,6 +273,89 @@ window.BP = (() => {
 
     stop() {
       window.__bpStop = true;
+    },
+
+    // ---- Tải ảnh (Google Flow) ----
+
+    // Mã của mọi ảnh đang có trên trang, chụp lại trước khi gửi prompt để phân biệt ảnh mới.
+    snapshotMedia() {
+      return [...document.querySelectorAll("img[data-media-id]")].map((i) => i.dataset.mediaId);
+    },
+
+    // Số ảnh mỗi lần tạo đang chọn (x1–x4) trên nút cài đặt cạnh nút gửi.
+    expectedCount() {
+      const s = document.querySelector(".settings-summary, .settings-trigger-button");
+      const m = s && s.textContent.match(/x\s*(\d)/i);
+      return m ? Number(m[1]) : 0;
+    },
+
+    // Tìm nhóm ảnh của 1 prompt: khối .batch-container có đúng câu prompt, chứa ảnh mới
+    // (không nằm trong exclude). Danh sách của Flow chỉ giữ các nhóm đang gần màn hình,
+    // nên nếu không thấy thì cuộn khung danh sách để tìm.
+    async findBatch(prompt, exclude) {
+      const norm = (t) => t.replace(/\s+/g, " ").trim().toLowerCase();
+      const want = norm(prompt);
+      const skip = new Set(exclude);
+      const scan = () => {
+        for (const b of document.querySelectorAll(".batch-container")) {
+          const p = b.querySelector(".prompt-text");
+          if (!p || norm(p.innerText) !== want) continue;
+          const ids = [...b.querySelectorAll("img.image[data-media-id]")].map((i) => i.dataset.mediaId);
+          if (ids.some((id) => skip.has(id))) continue;
+          const tiles = b.querySelectorAll("flow-grid-tile-container").length;
+          return { found: true, ids, tiles };
+        }
+        return null;
+      };
+      let r = scan();
+      if (r) return r;
+      const any = document.querySelector(".batch-container");
+      let box = any && any.parentElement;
+      while (box && !(box.scrollHeight > box.clientHeight + 10 && /auto|scroll/.test(getComputedStyle(box).overflowY)))
+        box = box.parentElement;
+      if (!box) return { found: false };
+      const keep = box.scrollTop;
+      for (let top = 0; top <= box.scrollHeight; top += Math.max(200, box.clientHeight * 0.8)) {
+        box.scrollTop = top;
+        await sleep(350);
+        r = scan();
+        if (r) return r;
+      }
+      box.scrollTop = keep;
+      return { found: false };
+    },
+
+    // Toạ độ giữa ô ảnh (cuộn ô vào giữa màn hình trước).
+    async tilePoint(mediaId) {
+      const img = document.querySelector(`img[data-media-id="${CSS.escape(mediaId)}"]`);
+      if (!img) return { ok: false, error: "Không thấy ảnh trên trang (có thể đã bị cuộn khỏi danh sách)." };
+      const tile = img.closest("flow-grid-tile-container") || img;
+      tile.scrollIntoView({ block: "center" });
+      await sleep(300);
+      return { ok: true, ...center(tile) };
+    },
+
+    // Tìm mục menu đang mở có nhãn khớp regex; chờ tối đa waitMs. Trả toạ độ + nhãn.
+    async menuItemPoint(pattern, waitMs, exact) {
+      const re = new RegExp(pattern, "i");
+      const labelOf = (el) => (el.querySelector(".label")?.textContent || el.textContent).replace(/\s+/g, " ").trim();
+      const end = Date.now() + (waitMs || 0);
+      let labels = [];
+      do {
+        const items = [...document.querySelectorAll('.cdk-overlay-container [role="menuitem"]')].filter(isVisible);
+        labels = items.map(labelOf);
+        const hits = items.filter((el) => (exact ? re.test(labelOf(el)) && labelOf(el).replace(re, "") === "" : re.test(labelOf(el))));
+        if (hits.length) {
+          const el = hits[hits.length - 1];
+          return { ok: true, label: labelOf(el), ...center(el) };
+        }
+        await sleep(200);
+      } while (Date.now() < end);
+      return { ok: false, labels };
+    },
+
+    menuOpen() {
+      return [...document.querySelectorAll('.cdk-overlay-container [role="menu"]')].some(isVisible);
     },
 
     // Cho người dùng bấm chọn 1 phần tử trên trang, trả về selector của phần tử đó.

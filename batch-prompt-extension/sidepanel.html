@@ -28,6 +28,15 @@
     <button id="stopBtn" disabled>■ Dừng</button>
   </section>
 
+  <section class="dl-box">
+    <label class="check"><input id="autoDl" type="checkbox" /> Tự tải ảnh về máy khi tạo xong</label>
+    <div id="dlOpts" class="small muted">
+      Lưu vào <b>Downloads/Flow/001_ten-prompt/1.png…</b>, chọn mục
+      <input id="dlLabel" type="text" class="inline" value="2K" /> trong menu "Tải xuống" của từng ảnh.
+      Chờ tạo ảnh tối đa <input id="genMaxSec" type="number" class="inline num" min="30" value="300" /> giây.
+    </div>
+  </section>
+
   <details>
     <summary>Cài đặt</summary>
     <label for="preset">Trang web</label>

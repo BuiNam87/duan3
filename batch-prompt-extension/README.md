@@ -27,6 +27,22 @@ Prompt, cài đặt và selector đã sửa được lưu lại tự động.
 2. Mở panel → tự nhận là **Google Flow**, chế độ **gửi xong chờ cố định 20 giây** rồi gửi prompt tiếp theo.
 3. Nếu Flow báo đang tạo quá nhiều cùng lúc, tăng số giây chờ trong **Cài đặt**.
 
+### Tự tải ảnh 2K về máy
+
+Tick **"Tự tải ảnh về máy khi tạo xong"** trong panel. Mỗi prompt gửi xong, extension chờ đủ số ảnh
+(x1–x4 đang chọn) rồi với từng ảnh: chuột phải → **Tải xuống** → **2K**. File được lưu vào:
+
+```
+Downloads/Flow/001_tao-anh-ho/1.png … 4.png
+Downloads/Flow/002_tao-anh-nui-phu-si/1.png …
+```
+
+- Extension vẫn gửi prompt theo nhịp cũ, việc tải chạy xen giữa các lần gửi; gửi hết thì chờ tải nốt.
+- Nhóm ảnh được nhận theo đúng câu prompt, và chỉ lấy ảnh mới tạo trong lượt chạy này.
+- Muốn tải bản khác (vd. 4K hoặc 1K) thì sửa ô "2K" trong panel.
+- Tắt **"Hỏi vị trí lưu từng tệp"** trong cài đặt tải xuống của Chrome, nếu không mỗi ảnh sẽ hiện hộp thoại lưu.
+- Lần đầu Chrome có thể hỏi "flow.google.com muốn tải nhiều tệp" → chọn **Cho phép**.
+
 ### Thanh vàng "đang gỡ lỗi trình duyệt này"
 
 Một số trang (như Flow) bỏ qua cú bấm do script tạo ra. Khi đó extension tự chuyển sang
