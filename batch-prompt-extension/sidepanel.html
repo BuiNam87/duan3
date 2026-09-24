@@ -40,19 +40,28 @@
     <label for="selStop">Selector nút dừng (lúc AI đang trả lời)</label>
     <input id="selStop" type="text" />
 
-    <div class="grid">
+    <label for="waitMode">Cách chờ giữa các prompt</label>
+    <select id="waitMode">
+      <option value="fixed">Gửi xong chờ cố định N giây (hợp với tạo ảnh/video)</option>
+      <option value="done">Chờ AI trả lời xong (hợp với chat)</option>
+    </select>
+    <label id="fixedWrap">Chờ sau mỗi lần gửi (giây)
+      <input id="fixedSec" type="number" min="0" value="20" />
+    </label>
+
+    <div class="grid" id="doneWrap">
       <label>Chờ im lặng (giây)
         <input id="idleSec" type="number" min="1" value="5" />
-      </label>
-      <label>Nghỉ giữa prompt (giây)
-        <input id="gapSec" type="number" min="0" value="3" />
       </label>
       <label>Tối đa mỗi prompt (giây)
         <input id="maxSec" type="number" min="10" value="300" />
       </label>
     </div>
+    <label>Nghỉ thêm giữa prompt (giây)
+      <input id="gapSec" type="number" min="0" value="3" />
+    </label>
     <p class="muted small">
-      Xong 1 prompt khi: nút dừng biến mất <b>và</b> trang không thay đổi trong
+      Chế độ "chờ AI trả lời xong": xong 1 prompt khi: nút dừng biến mất <b>và</b> trang không thay đổi trong
       "chờ im lặng" giây. Nếu để trống selector, extension tự dò ô nhập và bấm Enter.
     </p>
     <button id="resetBtn">Khôi phục mặc định cho trang này</button>

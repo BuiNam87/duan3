@@ -39,7 +39,7 @@ textarea, input[type="text"], input[type="number"], select {
 textarea { resize: vertical; }
 .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .row select { width: auto; }
-.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .grid label { font-weight: 500; font-size: 12px; }
 button {
   padding: 7px 12px;
@@ -63,3 +63,4 @@ summary { cursor: pointer; font-weight: 600; }
 #log li.done { color: var(--ok); }
 #log li.error { color: var(--err); }
 #log li .err { display: block; font-size: 12px; }
+#fixedWrap, .grid label { font-weight: 500; }

@@ -10,6 +10,10 @@ const els = {
   selInput: $("selInput"),
   selSend: $("selSend"),
   selStop: $("selStop"),
+  waitMode: $("waitMode"),
+  fixedSec: $("fixedSec"),
+  fixedWrap: $("fixedWrap"),
+  doneWrap: $("doneWrap"),
   idleSec: $("idleSec"),
   gapSec: $("gapSec"),
   maxSec: $("maxSec"),
@@ -21,7 +25,7 @@ const els = {
 let running = false;
 let stopRequested = false;
 let currentTabId = null;
-// Selector người dùng đã sửa, lưu theo preset: { chatgpt: {input, send, stop}, ... }
+// Cấu hình người dùng đã sửa, lưu theo preset: { flow: {input, send, stop, waitMode, fixedSec}, ... }
 let customSelectors = {};
 
 for (const [key, p] of Object.entries(PRESETS)) {
@@ -44,6 +48,16 @@ function loadSelectors(presetKey) {
   els.selInput.value = custom.input ?? base.input;
   els.selSend.value = custom.send ?? base.send;
   els.selStop.value = custom.stop ?? base.stop;
+  els.waitMode.value = custom.waitMode ?? base.waitMode ?? "done";
+  els.fixedSec.value = custom.fixedSec ?? base.fixedSec ?? 20;
+  updateWaitUI();
+}
+
+function updateWaitUI() {
+  const fixed = els.waitMode.value === "fixed";
+  els.fixedWrap.hidden = !fixed;
+  els.doneWrap.hidden = fixed;
+  els.selStop.disabled = fixed;
 }
 
 function save() {
@@ -61,7 +75,9 @@ function saveSelectors() {
   customSelectors[els.preset.value] = {
     input: els.selInput.value.trim(),
     send: els.selSend.value.trim(),
-    stop: els.selStop.value.trim()
+    stop: els.selStop.value.trim(),
+    waitMode: els.waitMode.value,
+    fixedSec: els.fixedSec.value
   };
   save();
 }
@@ -113,10 +129,12 @@ async function start() {
     input: els.selInput.value.trim(),
     send: els.selSend.value.trim(),
     stop: els.selStop.value.trim(),
+    waitMode: els.waitMode.value,
     idleMs: Math.max(1, Number(els.idleSec.value) || 5) * 1000,
     maxMs: Math.max(10, Number(els.maxSec.value) || 300) * 1000
   };
-  const gapMs = Math.max(0, Number(els.gapSec.value) || 0) * 1000;
+  let gapMs = Math.max(0, Number(els.gapSec.value) || 0) * 1000;
+  if (cfg.waitMode === "fixed") gapMs += Math.max(0, Number(els.fixedSec.value) || 0) * 1000;
 
   running = true;
   stopRequested = false;
@@ -144,7 +162,13 @@ async function start() {
     setState(items[i], result.ok ? "done" : "error", result.ok ? "" : result.error);
     if (result.ok) okCount++;
     if (!result.ok && !stopRequested && /Không tìm thấy|Cannot access|No tab/i.test(result.error)) break;
-    if (i < prompts.length - 1 && !stopRequested) await sleep(gapMs);
+    if (i < prompts.length - 1 && !stopRequested) {
+      const end = Date.now() + gapMs;
+      while (Date.now() < end && !stopRequested) {
+        els.progress.textContent = `${i + 1}/${prompts.length} · chờ ${Math.ceil((end - Date.now()) / 1000)}s`;
+        await sleep(250);
+      }
+    }
   }
 
   els.progress.textContent = `Xong ${okCount}/${prompts.length}${stopRequested ? " (đã dừng)" : ""}`;
@@ -167,7 +191,8 @@ async function stop() {
 els.prompts.addEventListener("input", () => { updateCount(); save(); });
 els.splitMode.addEventListener("change", () => { updateCount(); save(); });
 [els.idleSec, els.gapSec, els.maxSec].forEach((el) => el.addEventListener("change", save));
-[els.selInput, els.selSend, els.selStop].forEach((el) => el.addEventListener("change", saveSelectors));
+[els.selInput, els.selSend, els.selStop, els.fixedSec].forEach((el) => el.addEventListener("change", saveSelectors));
+els.waitMode.addEventListener("change", () => { updateWaitUI(); saveSelectors(); });
 els.preset.addEventListener("change", () => loadSelectors(els.preset.value));
 els.resetBtn.addEventListener("click", () => {
   delete customSelectors[els.preset.value];

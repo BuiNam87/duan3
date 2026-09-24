@@ -20,7 +20,21 @@ Mở một panel bên phải trình duyệt để gửi lần lượt nhiều pr
 
 Prompt, cài đặt và selector đã sửa được lưu lại tự động.
 
-## Cách extension biết AI đã trả lời xong
+## Dùng với Google Flow
+
+1. Mở dự án trong Flow, chọn trước **Hình ảnh/Video, tỉ lệ, model (vd. Nano Banana Pro), số lượng x1–x4**.
+   Extension chỉ điền prompt và bấm gửi, không đổi các lựa chọn này.
+2. Mở panel → tự nhận là **Google Flow**, chế độ **gửi xong chờ cố định 20 giây** rồi gửi prompt tiếp theo.
+3. Nếu Flow báo đang tạo quá nhiều cùng lúc, tăng số giây chờ trong **Cài đặt**.
+
+Nếu dòng tiến độ báo lỗi "chưa gửi được": chuột phải vào ô nhập / nút mũi tên gửi → **Inspect**,
+sửa selector trong Cài đặt (hoặc gửi đoạn HTML đó để chỉnh giúp).
+
+Cú pháp selector mở rộng:
+- `a || b`: thử `a` trước, không có mới thử `b`
+- `button::text(arrow_forward)`: nút có chứa chữ `arrow_forward` (tên icon Google)
+
+## Cách extension biết AI đã trả lời xong (chế độ chat)
 
 - Chờ nút "Stop" (lúc AI đang trả lời) xuất hiện rồi biến mất, sau đó
 - Chờ trang không còn thay đổi trong N giây (**Chờ im lặng**).
